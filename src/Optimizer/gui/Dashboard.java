@@ -1,15 +1,20 @@
 package Optimizer.gui;
 
 import java.awt.*;
+import java.io.File;
 
 import javax.swing.*;
 
 import Optimizer.Service.AnalyzerService;
+import Optimizer.analyzer.JarAnalyzer;
 import Optimizer.report.AnalysisReport;
+import Optimizer.report.PDFReportExporter;
 import Optimizer.energy.EnergyCalculator;
+import Optimizer.graph.LiveMonitorChart;
 import Optimizer.graph.UsageChart;
 import Optimizer.profiler.RuntimeProfiler;
 import Optimizer.report.ReportGenerator;
+import Optimizer.report.TextReportExporter;
 
 public class Dashboard extends JFrame {
 
@@ -21,12 +26,17 @@ public class Dashboard extends JFrame {
 
     JButton analyzeButton;
     JButton uploadButton;
+    JButton exportButton;
+    JButton pdfButton;
+    
+    AnalysisReport lastReport;
+    LiveMonitorChart liveChart;
 
     public Dashboard() {
 
         setTitle("Energy-Aware Java Optimizer");
 
-        setSize(700, 600);
+        setSize(1000, 700);
 
         setLocationRelativeTo(null);
 
@@ -35,7 +45,7 @@ public class Dashboard extends JFrame {
         setLayout(new BorderLayout());
 
         getContentPane().setBackground(
-                new Color(240, 248, 255)
+                new Color(30,30,30)
         );
 
         // =================================================
@@ -50,7 +60,7 @@ public class Dashboard extends JFrame {
         );
 
         headerPanel.setBackground(
-                new Color(240,248,255)
+                new Color(20,20,20)
         );
 
         // =================================================
@@ -72,7 +82,7 @@ public class Dashboard extends JFrame {
         );
 
         title.setForeground(
-                new Color(25,25,112)
+                new Color(0,255,180)
         );
 
         headerPanel.add(
@@ -88,7 +98,7 @@ public class Dashboard extends JFrame {
                 new JPanel();
 
         topPanel.setBackground(
-                new Color(240,248,255)
+                new Color(30,30,30)
         );
 
         topPanel.setLayout(
@@ -112,31 +122,34 @@ public class Dashboard extends JFrame {
                 );
 
         cpuLabel.setFont(labelFont);
+        cpuLabel.setForeground(Color.white);
 
         memoryLabel.setFont(labelFont);
+        memoryLabel.setForeground(Color.white);
 
         energyLabel.setFont(labelFont);
+        energyLabel.setForeground(Color.white);
+        
 
         topPanel.add(cpuLabel);
 
         topPanel.add(memoryLabel);
 
         topPanel.add(energyLabel);
-
+        
+        
         // =================================================
         // UPLOAD BUTTON
         // =================================================
 
-        uploadButton =
-                new JButton("Upload .class File");
+        uploadButton = new JButton("Upload .class File");
 
-        uploadButton.setBackground(
-                new Color(34,139,34)
-        );
+        uploadButton.setBackground(new Color(34,139,34) );
 
-        uploadButton.setForeground(
-                Color.WHITE
-        );
+        uploadButton.setForeground(Color.WHITE);
+        
+        uploadButton.setFocusPainted(false);
+        uploadButton.setFont(new Font("Arial",Font.BOLD,15));
 
         topPanel.add(uploadButton);
 
@@ -144,7 +157,15 @@ public class Dashboard extends JFrame {
                 topPanel,
                 BorderLayout.CENTER
         );
+        
+        pdfButton = new JButton("Export PDF");
 
+        pdfButton.setBackground( new Color(178,34,34));
+
+        pdfButton.setForeground(Color.WHITE);
+        pdfButton.setFocusPainted(false);
+        pdfButton.setFont(new Font("Arial",Font.BOLD,15));
+        
         add(headerPanel, BorderLayout.NORTH);
 
         // =================================================
@@ -154,13 +175,9 @@ public class Dashboard extends JFrame {
         suggestionArea =
                 new JTextArea();
 
-        suggestionArea.setBackground(
-                Color.WHITE
-        );
+        suggestionArea.setBackground(new Color(15,15,15));
 
-        suggestionArea.setForeground(
-                Color.BLACK
-        );
+        suggestionArea.setForeground(new Color(0,255,140));
 
         suggestionArea.setFont(
                 new Font(
@@ -191,21 +208,45 @@ public class Dashboard extends JFrame {
         analyzeButton.setForeground(
                 Color.WHITE
         );
+        analyzeButton.setFocusPainted(false);
+        analyzeButton.setFont(new Font("Arial",Font.BOLD,15));
+        
+        exportButton = new JButton("Export Report");
 
-        add(analyzeButton, BorderLayout.SOUTH);
+        exportButton.setBackground(new Color(139,0,139));
+
+        exportButton.setForeground(Color.WHITE);
+        exportButton.setFocusPainted(false);
+        exportButton.setFont(new Font("Arial",Font.BOLD,15));
+        
+        JPanel bottomPanel =
+                new JPanel();
+
+        bottomPanel.add(analyzeButton);
+
+        bottomPanel.add(exportButton);
+        
+        bottomPanel.add(pdfButton);
+        bottomPanel.setBackground(new Color(20,20,20));
+        add(bottomPanel, BorderLayout.SOUTH);
+        
+        
 
         // =================================================
         // BUTTON ACTIONS
         // =================================================
 
-        analyzeButton.addActionListener(
-                e -> analyze()
-        );
+        analyzeButton.addActionListener(e -> analyze());
 
-        uploadButton.addActionListener(
-                e -> uploadAndAnalyze()
-        );
-
+        uploadButton.addActionListener(e -> uploadAndAnalyze());
+        
+        exportButton.addActionListener(e -> exportReport());
+        
+        pdfButton.addActionListener(e -> exportPDF());
+        
+        liveChart= new LiveMonitorChart();
+        
+        startLiveMonitoring();
         setVisible(true);
     }
 
@@ -324,6 +365,13 @@ public class Dashboard extends JFrame {
 
         JFileChooser chooser =
                 new JFileChooser();
+        chooser.setFileFilter(
+        	    new javax.swing.filechooser.FileNameExtensionFilter(
+        	            "Class and Jar Files",
+        	            "class",
+        	            "jar"
+        	    )
+        	);
 
         int option =
                 chooser.showOpenDialog(this);
@@ -333,18 +381,38 @@ public class Dashboard extends JFrame {
             String path =
                     chooser.getSelectedFile()
                             .getAbsolutePath();
-
+            File selectedFile =
+                    chooser.getSelectedFile();
+            
             // ======================================
             // ASM ANALYSIS
             // ======================================
+
+            if(path.endsWith(".jar")) {
+
+                JarAnalyzer jarAnalyzer =
+                        new JarAnalyzer();
+
+                jarAnalyzer.analyzeJar(
+                        selectedFile
+                );
+
+                suggestionArea.setText(
+                        "JAR analysis completed."
+                );
+
+                return;
+            }
 
             AnalyzerService service =
                     new AnalyzerService();
 
             AnalysisReport report =
-                    service.analyze(
-                            chooser.getSelectedFile());
-
+                    service.analyze(selectedFile);
+            lastReport = report;
+            liveChart.updateCharts(report.getRealCpuUsage(),
+            		report.getUsedMemory(),
+            		report.getEnergyScore());
             // ======================================
             // UPDATE LABELS
             // ======================================
@@ -371,7 +439,41 @@ public class Dashboard extends JFrame {
             // ======================================
 
             suggestionArea.setText(
-            		        report.toString()
+
+                    report.toString()
+
+                    + "\n\n===== EXECUTION REPORT =====\n"
+
+                    + "\nExecution Time: "
+                    + report.getExecutionTime()
+                    + " ms\n"
+
+                    + "\n===== MEMORY REPORT =====\n"
+
+                    + "\nUsed Memory : "
+                    + report.getUsedMemory()
+                    + " MB"
+
+                    + "\nFree Memory : "
+                    + report.getFreeMemory()
+                    + " MB"
+
+                    + "\nTotal Memory: "
+                    + report.getTotalMemory()
+                    + " MB"
+
+                    + "\nMax Memory  : "
+                    + report.getMaxMemory()
+                    + " MB\n"
+                    
+					+ "\n===== CPU REPORT =====\n"
+					
+					+ "\nReal CPU Usage: "
+					+ String.format(
+					        "%.2f",
+					        report.getRealCpuUsage()
+					)
+					+ " %\n"
             );
 
             // ======================================
@@ -387,5 +489,119 @@ public class Dashboard extends JFrame {
                     report.getEnergyScore()
             );
         }
+    }
+    public void exportReport() {
+
+        if(lastReport == null) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No report available!"
+            );
+
+            return;
+        }
+
+        JFileChooser chooser =
+                new JFileChooser();
+
+        int option =
+                chooser.showSaveDialog(this);
+
+        if(option ==
+                JFileChooser.APPROVE_OPTION) {
+
+            String path =
+                    chooser.getSelectedFile()
+                            .getAbsolutePath();
+
+            if(!path.endsWith(".txt")) {
+
+                path += ".txt";
+            }
+
+            TextReportExporter exporter =
+                    new TextReportExporter();
+
+            exporter.exportReport(
+                    lastReport,
+                    path
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Report Exported!"
+            );
+        }
+    }
+    public void exportPDF() {
+
+        if(lastReport == null) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No report available!"
+            );
+
+            return;
+        }
+
+        JFileChooser chooser =
+                new JFileChooser();
+
+        int option =
+                chooser.showSaveDialog(this);
+
+        if(option ==
+                JFileChooser.APPROVE_OPTION) {
+
+            String path =
+                    chooser.getSelectedFile()
+                            .getAbsolutePath();
+
+            if(!path.endsWith(".pdf")) {
+
+                path += ".pdf";
+            }
+
+            PDFReportExporter exporter =
+                    new PDFReportExporter();
+
+            exporter.exportPDF(
+                    lastReport,
+                    path
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "PDF Exported!"
+            );
+        }
+    }
+    public void startLiveMonitoring() {
+
+        Timer timer =
+                new Timer(2000, e -> {
+
+            RuntimeProfiler profiler =
+                    new RuntimeProfiler();
+
+            double cpu =
+                    profiler.getCpuUsage();
+
+            long memory =
+                    profiler.getMemoryUsage();
+
+            double energy =
+                    (cpu * memory) / 100;
+
+            liveChart.updateCharts(
+                    cpu,
+                    memory,
+                    energy
+            );
+        });
+
+        timer.start();
     }
 }

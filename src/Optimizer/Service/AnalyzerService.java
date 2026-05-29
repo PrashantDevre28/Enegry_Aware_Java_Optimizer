@@ -1,11 +1,13 @@
 package Optimizer.Service;
 
 import java.io.File;
-import java.util.Arrays;
 import Optimizer.suggestion.SuggestionEngine;
 import Optimizer.analyzer.ASMAnalyzer;
 import Optimizer.report.AnalysisReport;
 import java.time.LocalDateTime;
+import Optimizer.profiler.ExecutionTimer;
+import Optimizer.profiler.MemoryProfiler;
+import Optimizer.profiler.CPUProfiler;
 
 
 public class AnalyzerService {
@@ -14,7 +16,17 @@ public class AnalyzerService {
 
 	    AnalysisReport report =
 	            new AnalysisReport();
-
+	    
+	    ExecutionTimer timer =
+	    		new ExecutionTimer();
+	    timer.start();
+	    
+	    MemoryProfiler memoryProfiler=
+	    		new MemoryProfiler();
+	    memoryProfiler.analyzeMemory();
+	    
+	    CPUProfiler cpuProfiler = new CPUProfiler();
+	    
 	    try {
 
 	        ASMAnalyzer analyzer =
@@ -33,13 +45,28 @@ public class AnalyzerService {
 
 	        report.setAnalyzedAt(
 	                LocalDateTime.now().toString());
+	        
+	        report.setUsedMemory(
+	                memoryProfiler.getUsedMemoryMB());
+
+	        report.setFreeMemory(
+	                memoryProfiler.getFreeMemoryMB());
+
+	        report.setTotalMemory(
+	                memoryProfiler.getTotalMemoryMB());
+
+	        report.setMaxMemory(
+	                memoryProfiler.getMaxMemoryMB());
 
 	        report.setClassName(
 	                analyzer.getClassName());
 
 	        report.setMethodCount(
 	                analyzer.getMetrics().getMethods());
-
+	        
+	        report.setRealCpuUsage(
+	        		cpuProfiler.getCpuUsage());
+	        
 	        report.setCpuUsage(
 	                analyzer.getCpuUsage());
 
@@ -77,7 +104,9 @@ public class AnalyzerService {
 	        report.setErrorMessage(
 	                e.getMessage());
 	    }
-
+	    timer.stop();
+	    report.setExecutionTime(
+	    		timer.getExecutionTimeMillis());
 	    return report;
 	}
 }

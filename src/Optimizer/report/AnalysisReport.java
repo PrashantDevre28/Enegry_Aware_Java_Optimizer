@@ -20,6 +20,11 @@ public class AnalysisReport {
 	 private boolean success;
 	 private String errorMessage;
 	 private long analysisDuration;
+	 private long usedMemory;
+	 private long freeMemory;
+	 private long totalMemory;
+	 private long maxMemory;
+	 private double realCpuUsage;
 	 
 	public boolean isSuccess() {
 		return success;
@@ -76,6 +81,13 @@ public class AnalysisReport {
 	public void setMethodCount(int methodCount) {
 		this.methodCount = methodCount;
 	}
+	
+	public double getRealCpuUsage() {
+		return realCpuUsage;
+	}
+	public void setRealCpuUsage(double realCpuUsage) {
+		this.realCpuUsage = realCpuUsage;
+	}
 	public double getCpuUsage() {
 		return cpuUsage;
 	}
@@ -118,6 +130,31 @@ public class AnalysisReport {
 	}
 	public void setFileSize(long fileSize) {
 		this.fileSize = fileSize;
+	}
+	
+	public long getUsedMemory() {
+		return usedMemory;
+	}
+	public void setUsedMemory(long usedMemory) {
+		this.usedMemory = usedMemory;
+	}
+	public long getFreeMemory() {
+		return freeMemory;
+	}
+	public void setFreeMemory(long freeMemory) {
+		this.freeMemory = freeMemory;
+	}
+	public long getTotalMemory() {
+		return totalMemory;
+	}
+	public void setTotalMemory(long totalMemory) {
+		this.totalMemory = totalMemory;
+	}
+	public long getMaxMemory() {
+		return maxMemory;
+	}
+	public void setMaxMemory(long maxMemory) {
+		this.maxMemory = maxMemory;
 	}
 	public String getAnalyzedAt() {
 		return analyzedAt;
@@ -171,6 +208,7 @@ public class AnalysisReport {
 		builder.append("Memory Usage: ")
 		       .append(memoryUsage)
 		       .append(" MB\n");
+
 
 		builder.append("Execution Time: ")
 		       .append(executionTime)
